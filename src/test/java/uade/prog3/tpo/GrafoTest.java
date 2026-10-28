@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class GrafoTest {
 
-    /** Grafo chico de referencia, el mismo que usa la carga inicial. */
+    /** Grafo chico de referencia para probar la estructura (independiente de la carga inicial). */
     private Grafo grafoDeEjemplo(boolean dirigido) {
         Grafo g = new Grafo(dirigido);
         g.agregarArista("A", "B", 4);

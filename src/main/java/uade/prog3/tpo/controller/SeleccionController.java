@@ -37,13 +37,13 @@ public class SeleccionController {
         return itemRepository.findAll();
     }
 
-    /** GET /api/seleccion/greedy?capacidad=10 */
+    /** GET /api/seleccion/greedy?capacidad=50 */
     @GetMapping("/greedy")
     public Seleccion.Resultado greedy(@RequestParam double capacidad) {
         return seleccion.greedy(todos(), capacidad);
     }
 
-    /** GET /api/seleccion/dinamica?capacidad=10 */
+    /** GET /api/seleccion/dinamica?capacidad=50 */
     @GetMapping("/dinamica")
     public Seleccion.Resultado dinamica(@RequestParam int capacidad) {
         return seleccion.programacionDinamica(todos(), capacidad);

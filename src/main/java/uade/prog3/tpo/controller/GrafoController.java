@@ -45,7 +45,7 @@ public class GrafoController {
 
     /** Metadatos del grafo cargado. Sirve para verificar la conexion a la base. */
     @GetMapping("/resumen")
-    public Map<String, Object> resumen(@RequestParam(defaultValue = "true") boolean dirigido) {
+    public Map<String, Object> resumen(@RequestParam(defaultValue = "false") boolean dirigido) {
         Grafo g = grafoService.cargar(dirigido);
         return Map.of(
                 "vertices", g.cantidadVertices(),
@@ -54,37 +54,37 @@ public class GrafoController {
                 "ids", g.ids());
     }
 
-    /** GET /api/grafo/dfs?origen=A */
+    /** GET /api/grafo/dfs?origen=DEP */
     @GetMapping("/dfs")
     public List<String> dfs(@RequestParam String origen) {
-        return recorridos.dfs(grafoService.cargar(true), origen);
+        return recorridos.dfs(grafoService.cargar(false), origen);
     }
 
-    /** GET /api/grafo/bfs?origen=A */
+    /** GET /api/grafo/bfs?origen=DEP */
     @GetMapping("/bfs")
     public List<String> bfs(@RequestParam String origen) {
-        return recorridos.bfs(grafoService.cargar(true), origen);
+        return recorridos.bfs(grafoService.cargar(false), origen);
     }
 
-    /** GET /api/grafo/dijkstra?origen=A&destino=H */
+    /** GET /api/grafo/dijkstra?origen=DEP&destino=VUR */
     @GetMapping("/dijkstra")
     public CaminosMinimos.Camino dijkstra(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.dijkstra(grafoService.cargar(true), origen, destino);
+        return caminosMinimos.dijkstra(grafoService.cargar(false), origen, destino);
     }
 
     /** GET /api/grafo/floyd */
     @GetMapping("/floyd")
     public Map<String, Double> floyd() {
-        return caminosMinimos.floydWarshall(grafoService.cargar(true));
+        return caminosMinimos.floydWarshall(grafoService.cargar(false));
     }
 
-    /** GET /api/grafo/ucs?origen=A&destino=H */
+    /** GET /api/grafo/ucs?origen=DEP&destino=VUR */
     @GetMapping("/ucs")
     public CaminosMinimos.Camino ucs(@RequestParam String origen, @RequestParam String destino) {
-        return caminosMinimos.ucs(grafoService.cargar(true), origen, destino);
+        return caminosMinimos.ucs(grafoService.cargar(false), origen, destino);
     }
 
-    /** GET /api/grafo/prim?origen=A   (el MST exige grafo NO dirigido) */
+    /** GET /api/grafo/prim?origen=DEP   (el MST exige grafo NO dirigido) */
     @GetMapping("/prim")
     public ArbolRecubrimiento.Mst prim(@RequestParam String origen) {
         return arbolRecubrimiento.prim(grafoService.cargar(false), origen);
@@ -96,13 +96,13 @@ public class GrafoController {
         return arbolRecubrimiento.kruskal(grafoService.cargar(false));
     }
 
-    /** GET /api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=5 */
+    /** GET /api/grafo/rutas?origen=DEP&destino=VUR&costoMaximo=30&saltosMaximos=5 */
     @GetMapping("/rutas")
     public List<Backtracking.Ruta> rutas(@RequestParam String origen,
                                          @RequestParam String destino,
                                          @RequestParam(defaultValue = "1000") double costoMaximo,
                                          @RequestParam(defaultValue = "10") int saltosMaximos) {
-        return backtracking.rutasSimples(grafoService.cargar(true), origen, destino,
+        return backtracking.rutasSimples(grafoService.cargar(false), origen, destino,
                 costoMaximo, saltosMaximos);
     }
 }

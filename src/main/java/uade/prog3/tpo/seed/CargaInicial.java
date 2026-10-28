@@ -13,20 +13,24 @@ import uade.prog3.tpo.repository.NodoRepository;
 import java.util.List;
 
 /**
- * Carga un grafo chico de ejemplo para que la aplicacion sea probable
+ * Carga la red logistica de CABA para que la aplicacion sea probable
  * apenas se levanta, sin tener que cargar datos a mano.
  *
- * El dominio es DELIBERADAMENTE generico (nodos A..H). Cada grupo lo
- * reemplaza por el suyo y pone app.seed.enabled=false, o bien reescribe
- * esta clase con sus propios datos.
+ * Dominio:
+ *   - Nodo   = deposito o punto de entrega (tipo DEPOSITO | ENTREGA)
+ *   - Arista = ruta entre dos nodos; costo = distancia en km
+ *   - Item   = paquete; peso = kg, valor = ganancia en $
+ *
+ * Las rutas son de doble mano, asi que el grafo se usa como NO dirigido.
+ * Cada ruta se guarda UNA sola vez; la vuelta la arma el Grafo en memoria.
  *
  * El grafo elegido tiene, a proposito:
- *   - 8 vertices y 12 aristas: chico para verificar a mano, grande para
+ *   - 10 vertices y 16 aristas: chico para verificar a mano, grande para
  *     que los algoritmos no den resultados triviales
- *   - todos los costos positivos, para que Dijkstra sea aplicable
+ *   - todas las distancias positivas, para que Dijkstra sea aplicable
  *   - es conexo, para que Prim y Kruskal tengan solucion
- *   - hay al menos un camino donde el mas corto NO es el directo, para
- *     que se note la relajacion de aristas
+ *   - caminos donde el mas corto NO es el directo, para que se note la
+ *     relajacion de aristas
  */
 @Component
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
@@ -49,47 +53,58 @@ public class CargaInicial implements CommandLineRunner {
             return;
         }
 
-        Nodo a = new Nodo("A", "Nodo A", "CENTRO", 0);
-        Nodo b = new Nodo("B", "Nodo B", "PUNTO", 12);
-        Nodo c = new Nodo("C", "Nodo C", "PUNTO", 8);
-        Nodo d = new Nodo("D", "Nodo D", "PUNTO", 15);
-        Nodo e = new Nodo("E", "Nodo E", "PUNTO", 6);
-        Nodo f = new Nodo("F", "Nodo F", "PUNTO", 20);
-        Nodo g = new Nodo("G", "Nodo G", "PUNTO", 9);
-        Nodo h = new Nodo("H", "Nodo H", "PUNTO", 4);
+        Nodo dep = new Nodo("DEP", "Deposito Central (Barracas)", "DEPOSITO", 0);
+        Nodo snt = new Nodo("SNT", "San Telmo", "ENTREGA", 0);
+        Nodo mic = new Nodo("MIC", "Microcentro", "ENTREGA", 0);
+        Nodo rec = new Nodo("REC", "Recoleta", "ENTREGA", 0);
+        Nodo pal = new Nodo("PAL", "Palermo", "ENTREGA", 0);
+        Nodo bel = new Nodo("BEL", "Belgrano", "ENTREGA", 0);
+        Nodo alm = new Nodo("ALM", "Almagro", "ENTREGA", 0);
+        Nodo cab = new Nodo("CAB", "Caballito", "ENTREGA", 0);
+        Nodo flo = new Nodo("FLO", "Flores", "ENTREGA", 0);
+        Nodo vur = new Nodo("VUR", "Villa Urquiza", "ENTREGA", 0);
 
-        // El camino directo A->C cuesta 9, pero A->B->C cuesta 4+3=7.
-        // Sirve para verificar que la relajacion de aristas este bien hecha.
-        a.conectar(b, 4);
-        a.conectar(c, 9);
-        b.conectar(c, 3);
-        b.conectar(d, 7);
-        c.conectar(d, 2);
-        c.conectar(e, 11);
-        d.conectar(e, 5);
-        d.conectar(f, 8);
-        e.conectar(f, 6);
-        e.conectar(g, 10);
-        f.conectar(h, 3);
-        g.conectar(h, 4);
+        // Rutas en km. Casos donde lo directo NO es lo mas corto:
+        //   - DEP->MIC directo cuesta 6, pero DEP->SNT->MIC cuesta 3+2=5.
+        //   - PAL->VUR directo cuesta 10, pero PAL->BEL->VUR cuesta 5+4=9.
+        // Sirven para verificar que la relajacion de aristas este bien hecha.
+        dep.conectar(snt, 3);
+        dep.conectar(mic, 6);
+        dep.conectar(cab, 6);
+        snt.conectar(mic, 2);
+        mic.conectar(rec, 3);
+        mic.conectar(alm, 5);
+        rec.conectar(pal, 4);
+        rec.conectar(alm, 4);
+        pal.conectar(alm, 4);
+        pal.conectar(bel, 5);
+        pal.conectar(vur, 10);
+        bel.conectar(vur, 4);
+        alm.conectar(cab, 3);
+        cab.conectar(pal, 6);
+        cab.conectar(flo, 4);
+        flo.conectar(vur, 9);
 
-        nodoRepository.saveAll(List.of(a, b, c, d, e, f, g, h));
+        nodoRepository.saveAll(List.of(dep, snt, mic, rec, pal, bel, alm, cab, flo, vur));
 
-        // Items para los problemas de seleccion bajo restriccion.
+        // Paquetes para los problemas de seleccion bajo restriccion
+        // (peso en kg, valor = ganancia en $, nodoId = destino de entrega).
         //
-        // Calibrado a proposito: con capacidad 10, greedy por ratio valor/peso
-        // elige {I4, I2} y obtiene 90, mientras que el optimo real es {I4, I5}
-        // con 105. Es el contraejemplo que se necesita para comparar greedy
-        // contra programacion dinamica.
+        // Calibrado a proposito: con la camioneta de 50 kg, greedy por ratio
+        // valor/peso toma P1 (300 $/kg), descarta P2 y P3 porque no entran,
+        // toma P4, descarta P5 y toma P6: {P1, P4, P6} = 13400. El optimo real
+        // es {P2, P3} con 14000. Es el contraejemplo que se necesita para
+        // comparar greedy contra programacion dinamica.
         itemRepository.saveAll(List.of(
-                new Item("I1", "Item 1", 5, 10, "A"),
-                new Item("I2", "Item 2", 4, 40, "B"),
-                new Item("I3", "Item 3", 6, 30, "C"),
-                new Item("I4", "Item 4", 3, 50, "D"),
-                new Item("I5", "Item 5", 7, 55, "E")
+                new Item("P1", "Paquete 1", 30, 9000, "BEL"),
+                new Item("P2", "Paquete 2", 25, 7000, "PAL"),
+                new Item("P3", "Paquete 3", 25, 7000, "REC"),
+                new Item("P4", "Paquete 4", 15, 3600, "CAB"),
+                new Item("P5", "Paquete 5", 10, 2000, "FLO"),
+                new Item("P6", "Paquete 6", 5, 800, "VUR")
         ));
 
-        log.info("Carga inicial completada: 8 nodos, 12 aristas, 5 items.");
+        log.info("Carga inicial completada: 10 nodos, 16 rutas, 6 paquetes.");
         log.info("Para desactivarla: app.seed.enabled=false");
     }
 }

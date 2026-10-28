@@ -1,28 +1,29 @@
-### Verificar conexión y datos
+### Verificar conexión y datos    (esperado: 10 vertices, 16 aristas, dirigido=false)
 GET http://localhost:8080/api/grafo/resumen
 
 ### Recorridos
-GET http://localhost:8080/api/grafo/dfs?origen=A
-GET http://localhost:8080/api/grafo/bfs?origen=A
+GET http://localhost:8080/api/grafo/dfs?origen=DEP
+GET http://localhost:8080/api/grafo/bfs?origen=DEP
 
-### Caminos mínimos    (esperado: A->C = 7, A->H = 20)
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=C
-GET http://localhost:8080/api/grafo/dijkstra?origen=A&destino=H
+### Caminos mínimos en km    (esperado: DEP->MIC = 5 via SNT, PAL->VUR = 9 via BEL, DEP->VUR = 19 via CAB-FLO)
+GET http://localhost:8080/api/grafo/dijkstra?origen=DEP&destino=MIC
+GET http://localhost:8080/api/grafo/dijkstra?origen=PAL&destino=VUR
+GET http://localhost:8080/api/grafo/dijkstra?origen=DEP&destino=VUR
 GET http://localhost:8080/api/grafo/floyd
-GET http://localhost:8080/api/grafo/ucs?origen=A&destino=H
+GET http://localhost:8080/api/grafo/ucs?origen=DEP&destino=VUR
 
-### Arbol de recubrimiento minimo    (esperado: 7 aristas, costo total 27)
-GET http://localhost:8080/api/grafo/prim?origen=A
+### Arbol de recubrimiento minimo    (esperado: 9 aristas, costo total 32 km)
+GET http://localhost:8080/api/grafo/prim?origen=DEP
 GET http://localhost:8080/api/grafo/kruskal
 
 ### Ordenamiento
 GET http://localhost:8080/api/seleccion/quicksort?criterio=ratio
 GET http://localhost:8080/api/seleccion/mergesort?criterio=peso
 
-### Seleccion    (comparar: greedy no deberia igualar a dinamica)
-GET http://localhost:8080/api/seleccion/greedy?capacidad=10
-GET http://localhost:8080/api/seleccion/dinamica?capacidad=10
+### Seleccion con camioneta de 50 kg    (esperado: greedy = 13400, dinamica = 14000 con P2+P3)
+GET http://localhost:8080/api/seleccion/greedy?capacidad=50
+GET http://localhost:8080/api/seleccion/dinamica?capacidad=50
 
 ### Backtracking y Branch and Bound
-GET http://localhost:8080/api/grafo/rutas?origen=A&destino=H&costoMaximo=30&saltosMaximos=6
+GET http://localhost:8080/api/grafo/rutas?origen=DEP&destino=VUR&costoMaximo=30&saltosMaximos=6
 GET http://localhost:8080/api/seleccion/repartir?contenedores=3

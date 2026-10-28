@@ -11,11 +11,11 @@ Recorrido en profundidad desde un nodo.
 
 **Parámetros:** `origen` (id del nodo de partida)
 
-**Ejemplo:** `GET /api/grafo/dfs?origen=A`
+**Ejemplo:** `GET /api/grafo/dfs?origen=DEP`
 
-**Respuesta:**
+**Respuesta** (visitando los vecinos en el orden en que se cargan las rutas):
 ```json
-["A", "B", "C", "D", "E", "F", "H", "G"]
+["DEP", "SNT", "MIC", "REC", "PAL", "ALM", "CAB", "FLO", "VUR", "BEL"]
 ```
 
 **Complejidad:** O(V + E) — cada vértice se visita una vez y cada arista se
