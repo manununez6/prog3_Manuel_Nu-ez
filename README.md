@@ -181,8 +181,8 @@ seed/           CargaInicial: la red logistica de CABA
 
 | Algoritmo | Endpoint | Estado |
 |---|---|---|
-| DFS | `GET /api/grafo/dfs?origen=DEP` | pendiente |
-| BFS | `GET /api/grafo/bfs?origen=DEP` | pendiente |
+| DFS | `GET /api/grafo/dfs?origen=DEP` | **implementado** |
+| BFS | `GET /api/grafo/bfs?origen=DEP` | **implementado** |
 | Dijkstra | `GET /api/grafo/dijkstra?origen=DEP&destino=MIC` | pendiente |
 | Floyd-Warshall | `GET /api/grafo/floyd` | pendiente |
 | UCS | `GET /api/grafo/ucs?origen=DEP&destino=VUR` | pendiente |
