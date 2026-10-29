@@ -85,19 +85,22 @@ public class Ordenamiento {
      * Para el coloquio: recurrencia T(n) = 2T(n/2) + O(n). Con la regla
      * practica (a=2, b=2, k=1): a = b^k (2 = 2^1), por lo tanto
      * T(n) = O(n^k log n) = O(n log n).
+     *
+     * Es generico para poder reutilizarlo fuera de los items: Kruskal lo usa
+     * para ordenar las aristas por costo.
      */
-    public List<Item> mergeSort(List<Item> items, Comparator<Item> criterio) {
+    public <T> List<T> mergeSort(List<T> items, Comparator<? super T> criterio) {
         if (items.size() <= 1) {
             return new ArrayList<>(items);
         }
         int medio = items.size() / 2;
-        List<Item> izquierda = mergeSort(items.subList(0, medio), criterio);
-        List<Item> derecha = mergeSort(items.subList(medio, items.size()), criterio);
+        List<T> izquierda = mergeSort(items.subList(0, medio), criterio);
+        List<T> derecha = mergeSort(items.subList(medio, items.size()), criterio);
         return merge(izquierda, derecha, criterio);
     }
 
-    private List<Item> merge(List<Item> izquierda, List<Item> derecha, Comparator<Item> criterio) {
-        List<Item> resultado = new ArrayList<>(izquierda.size() + derecha.size());
+    private <T> List<T> merge(List<T> izquierda, List<T> derecha, Comparator<? super T> criterio) {
+        List<T> resultado = new ArrayList<>(izquierda.size() + derecha.size());
         int i = 0;
         int j = 0;
         while (i < izquierda.size() && j < derecha.size()) {

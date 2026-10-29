@@ -186,8 +186,8 @@ seed/           CargaInicial: la red logistica de CABA
 | Dijkstra | `GET /api/grafo/dijkstra?origen=DEP&destino=MIC` | **implementado** |
 | Floyd-Warshall | `GET /api/grafo/floyd` | pendiente |
 | UCS | `GET /api/grafo/ucs?origen=DEP&destino=VUR` | pendiente |
-| Prim | `GET /api/grafo/prim?origen=DEP` | pendiente |
-| Kruskal | `GET /api/grafo/kruskal` | pendiente |
+| Prim | `GET /api/grafo/prim?origen=DEP` | **implementado** |
+| Kruskal | `GET /api/grafo/kruskal` | **implementado** |
 | QuickSort | `GET /api/seleccion/quicksort?criterio=ratio` | **implementado** |
 | MergeSort | `GET /api/seleccion/mergesort?criterio=peso` | **implementado** |
 | Greedy | `GET /api/seleccion/greedy?capacidad=50` | pendiente |

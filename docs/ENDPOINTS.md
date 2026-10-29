@@ -123,13 +123,108 @@ El camino se reconstruye siguiendo `predecesor` desde el destino hasta el origen
 
 ### GET /api/grafo/prim
 
-_(completar)_
+Árbol de recubrimiento mínimo: el conjunto de rutas de menor km total que
+conecta todos los puntos de la red. Prim lo hace crecer desde un nodo.
+
+**Parámetros:** `origen` (id del nodo desde donde crece el árbol)
+
+**Ejemplo:** `GET /api/grafo/prim?origen=DEP`
+
+**Respuesta** (200, aristas en el orden en que entran al árbol):
+```json
+{
+  "aristas": [
+    {"origen": "DEP", "destino": "SNT", "costo": 3.0},
+    {"origen": "SNT", "destino": "MIC", "costo": 2.0},
+    {"origen": "MIC", "destino": "REC", "costo": 3.0},
+    {"origen": "REC", "destino": "PAL", "costo": 4.0},
+    {"origen": "REC", "destino": "ALM", "costo": 4.0},
+    {"origen": "ALM", "destino": "CAB", "costo": 3.0},
+    {"origen": "CAB", "destino": "FLO", "costo": 4.0},
+    {"origen": "PAL", "destino": "BEL", "costo": 5.0},
+    {"origen": "BEL", "destino": "VUR", "costo": 4.0}
+  ],
+  "costoTotal": 32.0
+}
+```
+
+9 aristas (V − 1 con V = 10) y **32 km**. El costo total es el mismo desde
+cualquier origen. El conjunto de aristas puede variar porque hay empates:
+REC-ALM y PAL-ALM valen 4 los dos.
+
+**Errores:**
+- id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- grafo no conexo → 422 `{"estado":"ERROR","detalle":"El grafo no es conexo: el arbol solo llego a X de las Y aristas necesarias"}`
+
+**Complejidad:** O(E log V) con heap (la que implementamos).
+- Cada vértice entra al árbol una vez y en ese momento se encolan sus aristas
+  hacia afuera: cada arista se encola a lo sumo dos veces (una por extremo) → O(E) entradas.
+- Cada `add`/`poll` del heap es O(log E) = O(log V), porque E ≤ V².
+- Las aristas que salen de la cola con los dos extremos ya en el árbol se
+  descartan en O(1).
+- Total: O(E log V). La versión con arreglo `key[]` y búsqueda lineal del
+  mínimo es O(V²) sin importar cuántas aristas haya.
+
+**Estructura usada:** `PriorityQueue` de aristas candidatas ordenada por costo +
+`boolean[] enMst` + lista de adyacencia de `Grafo`.
 
 ---
 
 ### GET /api/grafo/kruskal
 
-_(completar)_
+Árbol de recubrimiento mínimo construido de otra forma: ordena todas las
+rutas de menor a mayor y las va agregando si no forman ciclo.
+
+**Parámetros:** ninguno
+
+**Ejemplo:** `GET /api/grafo/kruskal`
+
+**Respuesta** (200, aristas en el orden en que entran al árbol):
+```json
+{
+  "aristas": [
+    {"origen": "SNT", "destino": "MIC", "costo": 2.0},
+    {"origen": "DEP", "destino": "SNT", "costo": 3.0},
+    {"origen": "MIC", "destino": "REC", "costo": 3.0},
+    {"origen": "CAB", "destino": "ALM", "costo": 3.0},
+    {"origen": "CAB", "destino": "FLO", "costo": 4.0},
+    {"origen": "REC", "destino": "PAL", "costo": 4.0},
+    {"origen": "REC", "destino": "ALM", "costo": 4.0},
+    {"origen": "BEL", "destino": "VUR", "costo": 4.0},
+    {"origen": "PAL", "destino": "BEL", "costo": 5.0}
+  ],
+  "costoTotal": 32.0
+}
+```
+
+Mismas 9 aristas y **32 km** que Prim, en otro orden. Descarta PAL-ALM (4)
+porque PAL y ALM ya estaban conectados por REC, y nunca llega a mirar las
+rutas de 5 km o más que no entran (corta al llegar a 9 aristas).
+
+**Errores:**
+- grafo no conexo → 422 `{"estado":"ERROR","detalle":"El grafo no es conexo: el arbol solo llego a X de las Y aristas necesarias"}`
+
+**Complejidad:** O(E log E) = O(E log V).
+- Juntar las aristas (una sola vez por par, `u < v`): O(V + E).
+- Ordenarlas con nuestro MergeSort: **O(E log E)**. Es el paso que domina.
+- Por cada arista, dos `find` y a lo sumo un `union`. Con compresión de
+  caminos y unión por rango cada operación es casi O(1) (O(α(V)), donde α
+  crece tan lento que en la práctica es ≤ 4) → O(E · α(V)).
+- Total: O(E log E), y como E ≤ V², log E ≤ 2 log V → O(E log V).
+
+**Estructura usada:** lista de aristas + MergeSort propio (`Ordenamiento`) +
+Union-Find (`padre[]` y `rango[]`).
+
+#### ¿Prim o Kruskal? Depende de la densidad
+
+| Grafo | E respecto de V | Conviene | Por qué |
+|---|---|---|---|
+| Ralo (como esta red: V = 10, E = 16) | E ≈ V | **Kruskal** o Prim con heap | Ordenar pocas aristas es barato, O(E log E) ≈ O(V log V) |
+| Denso | E ≈ V² | **Prim con arreglo** O(V²) | Kruskal tendría que ordenar ~V² aristas: O(V² log V), peor que O(V²) |
+
+En resumen: en un grafo **ralo** el costo lo marca E y los dos andan bien
+(Kruskal es más simple si las aristas ya vienen en lista). En un grafo
+**denso**, Prim con búsqueda lineal evita ordenar todas las aristas.
 
 ---
 
