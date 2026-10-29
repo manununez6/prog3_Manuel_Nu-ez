@@ -77,7 +77,47 @@ Para eso está Dijkstra.
 
 ### GET /api/grafo/dijkstra
 
-_(completar)_
+Camino de menor distancia (km) entre dos nodos, con el recorrido completo.
+
+**Parámetros:** `origen` (id), `destino` (id)
+
+**Ejemplo:** `GET /api/grafo/dijkstra?origen=DEP&destino=VUR`
+
+**Respuesta** (200):
+```json
+{ "vertices": ["DEP", "CAB", "FLO", "VUR"], "costoTotal": 19.0 }
+```
+
+Otros casos verificados en `CaminosMinimosTest`:
+
+| Consulta | Camino | km | Directo |
+|---|---|---|---|
+| `origen=DEP&destino=MIC` | DEP → SNT → MIC | 5 | 6 |
+| `origen=PAL&destino=VUR` | PAL → BEL → VUR | 9 | 10 |
+| `origen=DEP&destino=VUR` | DEP → CAB → FLO → VUR | 19 | no hay |
+
+**Errores:**
+- id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- alguna arista con costo negativo → 422 `{"estado":"ERROR","detalle":"Dijkstra no admite costos negativos: la arista X->Y cuesta ..."}`
+- origen y destino no conectados → 422 `{"estado":"ERROR","detalle":"No hay camino de X a Y: no estan conectados"}`
+
+**Complejidad:** O((V + E) log V) en tiempo, O(V + E) en espacio.
+- Inicializar `dist` y `predecesor` y validar que no haya costos negativos: O(V + E).
+- Cada vez que una relajación mejora `dist[v]` se encola una entrada nueva.
+  Cada arista puede mejorar a lo sumo una vez a su destino desde un `u` dado,
+  así que hay como mucho E + 1 entradas en la cola.
+- Cada `add` y cada `poll` del heap cuesta O(log(tamaño de la cola)) = O(log E),
+  y como E ≤ V², log E ≤ 2 log V = O(log V).
+- Cada vértice se procesa (se recorren sus vecinos) una sola vez: las entradas
+  viejas se descartan en O(1) con `if (distancia > dist[u]) continue`. En total
+  se recorren E aristas.
+- Sumando: O(V + E) entradas × O(log V) por operación de heap = **O((V + E) log V)**.
+
+Con búsqueda lineal del mínimo en lugar de heap sería O(V²).
+
+**Estructura usada:** `PriorityQueue` (heap binario) ordenada por distancia +
+arreglos `double[] dist` e `int[] predecesor` + lista de adyacencia de `Grafo`.
+El camino se reconstruye siguiendo `predecesor` desde el destino hasta el origen.
 
 ---
 
