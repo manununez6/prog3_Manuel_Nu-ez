@@ -3,8 +3,10 @@ package uade.prog3.tpo.algorithm;
 import org.springframework.stereotype.Component;
 import uade.prog3.tpo.model.Item;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -84,8 +86,64 @@ public class Seleccion {
      * Complejidad esperada: O(n * W) en tiempo y en espacio.
      *
      * Para el coloquio: explicar por que O(n*W) es pseudopolinomica.
+     *
+     * Misma funcion objetivo que greedy: maximizar la ganancia total sin
+     * superar la capacidad en kg, con cada paquete entero o nada.
+     *
+     * dp[i][j] = mejor ganancia usando solo los primeros i paquetes con una
+     * capacidad de j kg. Para el paquete i (peso w, valor v):
+     *   - si no entra (w > j):  dp[i][j] = dp[i-1][j]
+     *   - si entra:             dp[i][j] = max(dp[i-1][j], dp[i-1][j-w] + v)
+     *                                          no tomarlo   tomarlo
+     * La respuesta es dp[n][W]. Hay (n+1)*(W+1) celdas y cada una es O(1).
      */
     public Resultado programacionDinamica(List<Item> items, int capacidad) {
-        throw new PendienteDeImplementar("Mochila 0/1 con programacion dinamica");
+        if (capacidad < 0) {
+            throw new IllegalArgumentException("La capacidad no puede ser negativa: " + capacidad);
+        }
+        int n = items.size();
+        int[] pesos = new int[n];
+        for (int i = 0; i < n; i++) {
+            pesos[i] = pesoEntero(items.get(i));
+        }
+
+        // fila 0 (ningun paquete) y columna 0 (capacidad 0) quedan en 0
+        double[][] dp = new double[n + 1][capacidad + 1];
+        for (int i = 1; i <= n; i++) {
+            int w = pesos[i - 1];
+            double v = items.get(i - 1).getValor();
+            for (int j = 0; j <= capacidad; j++) {
+                dp[i][j] = dp[i - 1][j];                            // no tomar el paquete i
+                if (w <= j && dp[i - 1][j - w] + v > dp[i][j]) {
+                    dp[i][j] = dp[i - 1][j - w] + v;                // tomarlo
+                }
+            }
+        }
+
+        // Recuperar el camino: si dp[i][j] cambio respecto de la fila de arriba,
+        // el paquete i se tomo y hay que seguir desde la capacidad que le quedaba.
+        Deque<Item> elegidos = new ArrayDeque<>();
+        double pesoTotal = 0;
+        int j = capacidad;
+        for (int i = n; i >= 1; i--) {
+            if (dp[i][j] != dp[i - 1][j]) {
+                Item item = items.get(i - 1);
+                elegidos.push(item);    // push agrega adelante: quedan en el orden de entrada
+                pesoTotal += item.getPeso();
+                j -= pesos[i - 1];
+            }
+        }
+        return new Resultado(new ArrayList<>(elegidos), dp[n][capacidad], pesoTotal,
+                "programacion dinamica (mochila 0/1)");
+    }
+
+    /** La tabla se indexa por kg: el peso tiene que ser un entero no negativo. */
+    private int pesoEntero(Item item) {
+        double peso = item.getPeso();
+        if (peso < 0 || peso != Math.floor(peso)) {
+            throw new IllegalArgumentException("El paquete " + item.getId()
+                    + " tiene peso " + peso + ": la mochila 0/1 con PD requiere pesos enteros no negativos");
+        }
+        return (int) peso;
     }
 }

@@ -290,7 +290,102 @@ empate de ratio (P2 y P3) se respeta el orden de entrada.
 
 ### GET /api/seleccion/dinamica
 
-_(completar — incluir la tabla dp del ejemplo)_
+Elige qué paquetes cargar con **mochila 0/1 por programación dinámica**:
+devuelve siempre la selección óptima.
+
+**Función objetivo:** la misma que greedy: maximizar la ganancia total ($)
+sin que la suma de pesos (kg) supere la capacidad, con cada paquete entero o nada.
+
+**Parámetros:** `capacidad` (kg, entero)
+
+**Ejemplo:** `GET /api/seleccion/dinamica?capacidad=50`
+
+**Respuesta** (200):
+```json
+{
+  "elegidos": [
+    {"id": "P2", "nombre": "Paquete 2", "peso": 25.0, "valor": 7000.0, "nodoId": "PAL"},
+    {"id": "P3", "nombre": "Paquete 3", "peso": 25.0, "valor": 7000.0, "nodoId": "REC"}
+  ],
+  "valorTotal": 14000.0,
+  "pesoTotal": 50.0,
+  "tecnica": "programacion dinamica (mochila 0/1)"
+}
+```
+
+**Errores:**
+- capacidad negativa → 400 `{"estado":"ERROR","detalle":"La capacidad no puede ser negativa: ..."}`
+- algún paquete con peso no entero → 400 `{"estado":"ERROR","detalle":"El paquete X tiene peso 2.5: la mochila 0/1 con PD requiere pesos enteros no negativos"}`
+
+#### Recurrencia
+
+`dp[i][j]` = mejor ganancia usando solo los primeros `i` paquetes con `j` kg de capacidad.
+
+```
+dp[0][j] = 0                                     (sin paquetes no hay ganancia)
+dp[i][j] = dp[i-1][j]                            si peso_i > j      (no entra)
+dp[i][j] = max(dp[i-1][j], dp[i-1][j-peso_i] + valor_i)   si entra
+             no tomarlo    tomarlo
+```
+
+La respuesta es `dp[n][W]`. La tabla se llena fila por fila, de arriba hacia
+abajo (bottom-up), porque cada fila solo depende de la anterior.
+
+#### Tabla dp del ejemplo (capacidad 50)
+
+La tabla real tiene 51 columnas (j = 0..50). Como todos los pesos son
+múltiplos de 5, los valores solo cambian en esas columnas:
+
+| i \ j | 0 | 5 | 10 | 15 | 20 | 25 | 30 | 35 | 40 | 45 | 50 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 (ninguno) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| P1 (30 kg, $9000) | 0 | 0 | 0 | 0 | 0 | 0 | 9000 | 9000 | 9000 | 9000 | 9000 |
+| P2 (25 kg, $7000) | 0 | 0 | 0 | 0 | 0 | 7000 | 9000 | 9000 | 9000 | 9000 | 9000 |
+| P3 (25 kg, $7000) | 0 | 0 | 0 | 0 | 0 | 7000 | 9000 | 9000 | 9000 | 9000 | **14000** |
+| P4 (15 kg, $3600) | 0 | 0 | 0 | 3600 | 3600 | 7000 | 9000 | 9000 | 10600 | 12600 | 14000 |
+| P5 (10 kg, $2000) | 0 | 0 | 2000 | 3600 | 3600 | 7000 | 9000 | 9000 | 11000 | 12600 | 14000 |
+| P6 (5 kg, $800) | 0 | 800 | 2000 | 3600 | 4400 | 7000 | 9000 | 9800 | 11000 | 12600 | **14000** |
+
+**Recuperación del camino** (desde `dp[6][50]` hacia arriba): si el valor
+cambia respecto de la fila de arriba, ese paquete se tomó y se resta su peso a `j`.
+
+| i | dp[i][j] vs dp[i-1][j] | ¿Se toma? | j queda en |
+|---|---|---|---|
+| P6 | 14000 = 14000 | no | 50 |
+| P5 | 14000 = 14000 | no | 50 |
+| P4 | 14000 = 14000 | no | 50 |
+| P3 | 14000 ≠ 9000 | **sí** | 50 − 25 = 25 |
+| P2 | dp[2][25] = 7000 ≠ dp[1][25] = 0 | **sí** | 25 − 25 = 0 |
+| P1 | 0 = 0 | no | 0 |
+
+Resultado: **{P2, P3} = 50 kg, $14000**.
+
+#### Juego de datos donde greedy no da el óptimo
+
+Con los mismos 6 paquetes y 50 kg, greedy por ratio valor/peso toma P1 (300 $/kg),
+no le entran P2 ni P3, y completa con P4 y P6: **{P1, P4, P6} = $13400**.
+Programación dinámica encuentra **{P2, P3} = $14000**. Greedy pierde $600
+(ver la tabla paso a paso en `/api/seleccion/greedy`). Lo verifica
+`SeleccionTest.greedyPierdeContraDinamica`.
+
+**Complejidad:** O(n · W) en tiempo y en espacio, con n = cantidad de paquetes
+y W = capacidad en kg.
+- La tabla tiene (n + 1) × (W + 1) celdas y cada una se calcula en O(1)
+  (una comparación y una suma) → O(n · W).
+- La recuperación del camino recorre una fila por paquete → O(n).
+- Espacio: la tabla completa, O(n · W). Se guarda entera porque hace falta
+  para recuperar el camino.
+
+**¿Por qué es pseudopolinómica?** O(n · W) parece polinomial, pero W es el
+**valor numérico** de la capacidad, no el tamaño de la entrada. Escribir W
+ocupa solo log₂ W bits: si la capacidad pasa de 50 a 50.000.000 kg, la entrada
+crece apenas unos dígitos, pero la tabla crece un millón de veces. Medido en
+bits de la entrada (b = log W), el costo es O(n · 2^b): exponencial. Por eso
+se llama pseudopolinómica: es polinomial en el valor de W, no en su tamaño.
+Con capacidades chicas, como los 50 kg de la camioneta, es muy eficiente.
+
+**Estructura usada:** matriz `double[n+1][W+1]` llenada bottom-up + `ArrayDeque`
+para devolver los elegidos en el orden de entrada.
 
 ---
 

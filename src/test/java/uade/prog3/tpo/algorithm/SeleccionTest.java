@@ -78,4 +78,56 @@ class SeleccionTest {
     void capacidadNegativaFalla() {
         assertThrows(IllegalArgumentException.class, () -> seleccion.greedy(paquetes(), -1));
     }
+
+    @Test
+    void dinamicaConLaCamionetaDe50Kg() {
+        Seleccion.Resultado r = seleccion.programacionDinamica(paquetes(), 50);
+
+        assertEquals(List.of("P2", "P3"), ids(r.elegidos()));
+        assertEquals(14000.0, r.valorTotal());
+        assertEquals(50.0, r.pesoTotal());
+    }
+
+    @Test
+    void greedyPierdeContraDinamica() {
+        Seleccion.Resultado greedy = seleccion.greedy(paquetes(), 50);
+        Seleccion.Resultado dinamica = seleccion.programacionDinamica(paquetes(), 50);
+
+        assertEquals(13400.0, greedy.valorTotal());
+        assertEquals(14000.0, dinamica.valorTotal());
+        assertEquals(600.0, dinamica.valorTotal() - greedy.valorTotal());
+    }
+
+    @Test
+    void dinamicaNuncaEsPeorQueGreedy() {
+        for (int capacidad = 0; capacidad <= 120; capacidad += 5) {
+            double greedy = seleccion.greedy(paquetes(), capacidad).valorTotal();
+            Seleccion.Resultado dinamica = seleccion.programacionDinamica(paquetes(), capacidad);
+            assertTrue(dinamica.valorTotal() >= greedy, "capacidad " + capacidad);
+            assertTrue(dinamica.pesoTotal() <= capacidad, "capacidad " + capacidad);
+        }
+    }
+
+    @Test
+    void elValorDevueltoCoincideConLosElegidos() {
+        // la recuperacion del camino tiene que ser consistente con dp[n][W]
+        Seleccion.Resultado r = seleccion.programacionDinamica(paquetes(), 40);
+        double suma = r.elegidos().stream().mapToDouble(Item::getValor).sum();
+        assertEquals(r.valorTotal(), suma);
+        assertEquals(List.of("P1", "P5"), ids(r.elegidos()));   // 30 + 10 = 40 kg
+        assertEquals(11000.0, r.valorTotal());
+    }
+
+    @Test
+    void dinamicaRechazaPesosNoEnteros() {
+        List<Item> items = List.of(new Item("X", "Fraccionario", 2.5, 100, null));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> seleccion.programacionDinamica(items, 10));
+        assertTrue(e.getMessage().contains("enteros"), e.getMessage());
+    }
+
+    @Test
+    void dinamicaConCapacidadNegativaFalla() {
+        assertThrows(IllegalArgumentException.class, () -> seleccion.programacionDinamica(paquetes(), -1));
+    }
 }
