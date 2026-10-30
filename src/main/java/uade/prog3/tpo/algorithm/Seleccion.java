@@ -3,6 +3,8 @@ package uade.prog3.tpo.algorithm;
 import org.springframework.stereotype.Component;
 import uade.prog3.tpo.model.Item;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -19,6 +21,12 @@ public class Seleccion {
     /** Resultado de una seleccion de items bajo restriccion de capacidad. */
     public record Resultado(List<Item> elegidos, double valorTotal, double pesoTotal, String tecnica) { }
 
+    private final Ordenamiento ordenamiento;
+
+    public Seleccion(Ordenamiento ordenamiento) {
+        this.ordenamiento = ordenamiento;
+    }
+
     /**
      * GREEDY: seleccionar items maximizando el valor total sin superar la capacidad,
      * ordenando por ratio valor/peso descendente y tomando mientras entren.
@@ -33,9 +41,35 @@ public class Seleccion {
      * OJO: sobre items indivisibles (mochila 0/1) este algoritmo NO garantiza
      * el optimo. Eso no es un error a corregir: es el punto de la comparacion.
      * En el coloquio hay que traer un juego de datos donde greedy pierda.
+     *
+     * Funcion objetivo: maximizar la suma de valor (ganancia en $) de los
+     * paquetes elegidos, sujeto a que la suma de peso (kg) no supere la
+     * capacidad de la camioneta. Cada paquete se toma entero o no se toma.
+     *
+     * Criterio greedy: ratio valor/peso descendente. Se ordena con el MergeSort
+     * propio, O(n log n); al ser estable, los empates de ratio respetan el
+     * orden de entrada y el resultado es reproducible. Despues se recorre la
+     * lista una vez, O(n): si el paquete entra se toma, si no se saltea y se
+     * sigue con el proximo (uno mas liviano puede entrar todavia).
      */
     public Resultado greedy(List<Item> items, double capacidad) {
-        throw new PendienteDeImplementar("Seleccion greedy");
+        if (capacidad < 0) {
+            throw new IllegalArgumentException("La capacidad no puede ser negativa: " + capacidad);
+        }
+        List<Item> porRatio = ordenamiento.mergeSort(items,
+                Comparator.comparingDouble(Item::ratioValorPeso).reversed());
+
+        List<Item> elegidos = new ArrayList<>();
+        double valorTotal = 0;
+        double pesoTotal = 0;
+        for (Item item : porRatio) {
+            if (pesoTotal + item.getPeso() <= capacidad) {
+                elegidos.add(item);
+                pesoTotal += item.getPeso();
+                valorTotal += item.getValor();
+            }
+        }
+        return new Resultado(elegidos, valorTotal, pesoTotal, "greedy por ratio valor/peso");
     }
 
     /**

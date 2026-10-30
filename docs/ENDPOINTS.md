@@ -230,7 +230,61 @@ En resumen: en un grafo **ralo** el costo lo marca E y los dos andan bien
 
 ### GET /api/seleccion/greedy
 
-_(completar — incluir un caso donde greedy NO dé el óptimo)_
+Elige qué paquetes cargar en la camioneta con un criterio greedy.
+
+**Función objetivo:** maximizar la ganancia total ($) de los paquetes
+elegidos, sin que la suma de sus pesos (kg) supere la capacidad. Cada
+paquete va entero o no va (mochila 0/1).
+
+**Criterio:** ratio valor/peso ($ por kg) de mayor a menor; se toma cada
+paquete si todavía entra, y si no entra se sigue con el siguiente.
+
+**Parámetros:** `capacidad` (kg disponibles en la camioneta)
+
+**Ejemplo:** `GET /api/seleccion/greedy?capacidad=50`
+
+**Respuesta** (200):
+```json
+{
+  "elegidos": [
+    {"id": "P1", "nombre": "Paquete 1", "peso": 30.0, "valor": 9000.0, "nodoId": "BEL"},
+    {"id": "P4", "nombre": "Paquete 4", "peso": 15.0, "valor": 3600.0, "nodoId": "CAB"},
+    {"id": "P6", "nombre": "Paquete 6", "peso": 5.0, "valor": 800.0, "nodoId": "VUR"}
+  ],
+  "valorTotal": 13400.0,
+  "pesoTotal": 50.0,
+  "tecnica": "greedy por ratio valor/peso"
+}
+```
+
+**Caso donde greedy NO da el óptimo** (capacidad 50 kg):
+
+| Paquete | Ratio $/kg | ¿Entra? | Carga | Ganancia |
+|---|---|---|---|---|
+| P1 | 300 | sí | 30 kg | $9000 |
+| P2 | 280 | no (55 > 50) | 30 kg | $9000 |
+| P3 | 280 | no (55 > 50) | 30 kg | $9000 |
+| P4 | 240 | sí | 45 kg | $12600 |
+| P5 | 200 | no (55 > 50) | 45 kg | $12600 |
+| P6 | 160 | sí | 50 kg | **$13400** |
+
+El óptimo es **P2 + P3 = 50 kg, $14000**. Greedy pierde $600 porque toma P1
+(el mejor ratio) y eso le quita el lugar a dos paquetes que juntos valen más.
+Greedy es óptimo en la mochila **fraccional** (se pueden partir paquetes),
+no en la 0/1: para el óptimo exacto está `/api/seleccion/dinamica`.
+
+**Errores:** capacidad negativa → 400 `{"estado":"ERROR","detalle":"La capacidad no puede ser negativa: ..."}`
+
+**Complejidad:** O(n log n), con n = cantidad de paquetes.
+- Ordenar por ratio con nuestro MergeSort: O(n log n). Recurrencia
+  T(n) = 2T(n/2) + O(n), siempre, sin peor caso cuadrático.
+- Recorrer la lista ordenada una vez, con una comparación y dos sumas por
+  paquete: O(n).
+- Total: O(n log n) + O(n) = **O(n log n)**: domina el ordenamiento.
+- Espacio: O(n) por la lista ordenada (MergeSort no modifica la de entrada).
+
+**Estructura usada:** lista + MergeSort propio (`Ordenamiento`), estable: ante
+empate de ratio (P2 y P3) se respeta el orden de entrada.
 
 ---
 
