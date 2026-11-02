@@ -1,7 +1,44 @@
 # Documentación de endpoints
 
-> Plantilla. Cada grupo la completa con SUS endpoints, sus ejemplos reales
-> y su análisis de complejidad. Un endpoint sin esta ficha no suma puntos.
+Fichas de todos los endpoints implementados, con los datos de `CargaInicial`
+(red logística de CABA y paquetes P1 a P6). UCS es opcional y no está implementado:
+`GET /api/grafo/ucs` responde `501`, por eso no tiene ficha.
+
+**Cómo se obtuvieron los ejemplos:** son respuestas HTTP reales de los controllers
+y los algoritmos, capturadas con MockMvc y los datos que guarda `CargaInicial`,
+pero con los repositorios simulados, sin una base Neo4j. Si Neo4j devuelve los
+nodos en otro orden, puede cambiar el orden de los resultados y, en
+`/repartir`, los conteos de nodos o qué camioneta lleva cada paquete. Las
+distancias, los costos totales y la carga máxima no cambian.
+
+**Sobre las complejidades:** cada una es la del algoritmo. Antes de ejecutarlo,
+el endpoint hace una sola consulta (`findAll`) y los algoritmos trabajan en memoria,
+sin consultar la base.
+
+---
+
+### GET /api/grafo/resumen
+
+Metadatos del grafo cargado. No es un algoritmo del TPO: sirve para verificar la
+conexión a la base y los datos.
+
+**Parámetros:** `dirigido` (opcional, por defecto `false`). Las rutas son de doble
+mano, así que la red se usa como no dirigida.
+
+**Ejemplo:** `GET /api/grafo/resumen`
+
+**Respuesta** (200):
+```json
+{"vertices": 10, "dirigido": false, "aristas": 16, "ids": ["DEP","SNT","MIC","REC","PAL","BEL","ALM","CAB","FLO","VUR"]}
+```
+
+**Errores:** este endpoint no define errores propios.
+
+**Complejidad:** O(V + E) en tiempo y en espacio.
+- Armar `Grafo` recorre cada nodo y cada una de sus conexiones una vez: O(V + E).
+- Contar las aristas suma el tamaño de cada lista de adyacencia: O(V).
+
+**Estructura usada:** lista de adyacencia de `Grafo` + `HashMap` de id a índice.
 
 ---
 
@@ -24,7 +61,9 @@ adyacencia. El ejemplo supone que Neo4j devuelve los nodos y las rutas en el
 mismo orden en que los guarda `CargaInicial`; `RecorridosTest` verifica este
 resultado sobre la red armada en ese orden.
 
-**Errores:** `origen` inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+**Errores:**
+- `origen` inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 
 **Complejidad:** O(V + E).
 - Cada vértice se marca como visitado al entrar a `dfs(u)` y nunca se vuelve a
@@ -57,7 +96,9 @@ Por niveles (cantidad de rutas desde el depósito):
 nivel 0: DEP · nivel 1: SNT, MIC, CAB · nivel 2: REC, ALM, PAL, FLO · nivel 3: BEL, VUR.
 Vale la misma aclaración del DFS sobre el orden de los vecinos.
 
-**Errores:** `origen` inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+**Errores:**
+- `origen` inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 
 **Complejidad:** O(V + E).
 - Cada vértice se marca como visitado **al encolarlo**, así que entra a la
@@ -98,6 +139,7 @@ Otros casos verificados en `CaminosMinimosTest`:
 
 **Errores:**
 - id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 - alguna arista con costo negativo → 422 `{"estado":"ERROR","detalle":"Dijkstra no admite costos negativos: la arista X->Y cuesta ..."}`
 - origen y destino no conectados → 422 `{"estado":"ERROR","detalle":"No hay camino de X a Y: no estan conectados"}`
 
@@ -129,9 +171,9 @@ Distancia mínima (km) entre **todos** los pares de nodos.
 
 **Ejemplo:** `GET /api/grafo/floyd`
 
-**Respuesta** (200, un mapa `"origen->destino"`; recortado, son 100 pares):
+**Respuesta** (200, un mapa `"origen->destino"`; son 100 pares, acá solo la fila de DEP):
 ```json
-{ "DEP->DEP": 0.0, "DEP->SNT": 3.0, "DEP->MIC": 5.0, "DEP->VUR": 19.0, "PAL->VUR": 9.0, "...": "..." }
+{"DEP->DEP":0.0,"DEP->SNT":3.0,"DEP->MIC":5.0,"DEP->REC":8.0,"DEP->PAL":12.0,"DEP->BEL":17.0,"DEP->ALM":9.0,"DEP->CAB":6.0,"DEP->FLO":10.0,"DEP->VUR":19.0}
 ```
 
 Los pares sin camino no aparecen en el mapa. En esta red no pasa porque es conexa.
@@ -152,7 +194,7 @@ Matriz completa de km sobre la red. Coincide con Dijkstra en los 100 pares
 | **FLO** | 10 | 13 | 12 | 11 | 10 | 13 | 7 | 4 | 0 | 9 |
 | **VUR** | 19 | 18 | 16 | 13 | 9 | 4 | 13 | 13 | 9 | 0 |
 
-**Errores:** ciclo de costo negativo → 422 `{"estado":"ERROR","detalle":"Floyd-Warshall encontro un ciclo de costo negativo que pasa por X: los costos minimos no estan definidos"}`.
+**Errores:** este endpoint no recibe parámetros. Ciclo de costo negativo → 422 `{"estado":"ERROR","detalle":"Floyd-Warshall encontro un ciclo de costo negativo que pasa por X: los costos minimos no estan definidos"}`.
 En un grafo no dirigido, una sola arista negativa ya es un ciclo negativo (ir y volver por ella).
 
 **Complejidad:** O(V³) en tiempo, O(V²) en espacio.
@@ -219,6 +261,7 @@ REC-ALM y PAL-ALM valen 4 los dos.
 
 **Errores:**
 - id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 - grafo no conexo → 422 `{"estado":"ERROR","detalle":"El grafo no es conexo: el arbol solo llego a X de las Y aristas necesarias"}`
 
 **Complejidad:** O(E log V) con heap (la que implementamos).
@@ -251,11 +294,11 @@ rutas de menor a mayor y las va agregando si no forman ciclo.
     {"origen": "SNT", "destino": "MIC", "costo": 2.0},
     {"origen": "DEP", "destino": "SNT", "costo": 3.0},
     {"origen": "MIC", "destino": "REC", "costo": 3.0},
-    {"origen": "CAB", "destino": "ALM", "costo": 3.0},
-    {"origen": "CAB", "destino": "FLO", "costo": 4.0},
+    {"origen": "ALM", "destino": "CAB", "costo": 3.0},
     {"origen": "REC", "destino": "PAL", "costo": 4.0},
     {"origen": "REC", "destino": "ALM", "costo": 4.0},
     {"origen": "BEL", "destino": "VUR", "costo": 4.0},
+    {"origen": "CAB", "destino": "FLO", "costo": 4.0},
     {"origen": "PAL", "destino": "BEL", "costo": 5.0}
   ],
   "costoTotal": 32.0
@@ -290,6 +333,85 @@ Union-Find (`padre[]` y `rango[]`).
 En resumen: en un grafo **ralo** el costo lo marca E y los dos andan bien
 (Kruskal es más simple si las aristas ya vienen en lista). En un grafo
 **denso**, Prim con búsqueda lineal evita ordenar todas las aristas.
+
+---
+
+### GET /api/seleccion/quicksort
+
+Ordena los paquetes con QuickSort, de menor a mayor según el criterio. Devuelve
+una lista nueva: no modifica la de entrada.
+
+**Parámetros:** `criterio` (opcional, por defecto `ratio`): `valor`, `peso` o `ratio`
+(valor/peso)
+
+**Ejemplo:** `GET /api/seleccion/quicksort?criterio=ratio`
+
+**Respuesta** (200):
+```json
+[
+  {"id": "P6", "nombre": "Paquete 6", "peso": 5.0, "valor": 800.0, "nodoId": "VUR"},
+  {"id": "P5", "nombre": "Paquete 5", "peso": 10.0, "valor": 2000.0, "nodoId": "FLO"},
+  {"id": "P4", "nombre": "Paquete 4", "peso": 15.0, "valor": 3600.0, "nodoId": "CAB"},
+  {"id": "P2", "nombre": "Paquete 2", "peso": 25.0, "valor": 7000.0, "nodoId": "PAL"},
+  {"id": "P3", "nombre": "Paquete 3", "peso": 25.0, "valor": 7000.0, "nodoId": "REC"},
+  {"id": "P1", "nombre": "Paquete 1", "peso": 30.0, "valor": 9000.0, "nodoId": "BEL"}
+]
+```
+
+Ratios: P6 = 160, P5 = 200, P4 = 240, P2 = P3 = 280, P1 = 300. QuickSort no es
+estable: no garantiza el orden entre P2 y P3, que empatan.
+
+**Errores:** criterio desconocido → 400 `{"estado":"ERROR","detalle":"Criterio invalido: x. Use valor, peso o ratio."}`
+
+**Complejidad:** O(n log n) en promedio y O(n²) en el peor caso.
+- **Partición:** recorre el rango una vez comparando contra el pivote: O(n).
+- **Caso promedio:** el pivote parte el rango en dos mitades parecidas.
+  T(n) = 2T(n/2) + O(n) = **O(n log n)**: hay log n niveles y cada uno cuesta O(n).
+- **Peor caso:** cada partición deja 0 y n−1 elementos.
+  T(n) = T(n−1) + O(n) = **O(n²)**. Usar el elemento del medio como pivote evita
+  que pase con listas ya ordenadas, pero sigue existiendo alguna entrada adversaria.
+- **Espacio:** O(n) por la copia de la lista, más la pila de recursión: O(log n) en
+  promedio y O(n) en el peor caso.
+
+**Estructura usada:** `ArrayList` (copia de la entrada) con partición de Lomuto en
+el lugar y pivote en el elemento del medio.
+
+---
+
+### GET /api/seleccion/mergesort
+
+Ordena los paquetes con MergeSort, de menor a mayor según el criterio. Es estable:
+ante un empate respeta el orden de entrada. Devuelve una lista nueva.
+
+**Parámetros:** `criterio` (opcional, por defecto `ratio`): `valor`, `peso` o `ratio`
+(valor/peso)
+
+**Ejemplo:** `GET /api/seleccion/mergesort?criterio=peso`
+
+**Respuesta** (200):
+```json
+[
+  {"id": "P6", "nombre": "Paquete 6", "peso": 5.0, "valor": 800.0, "nodoId": "VUR"},
+  {"id": "P5", "nombre": "Paquete 5", "peso": 10.0, "valor": 2000.0, "nodoId": "FLO"},
+  {"id": "P4", "nombre": "Paquete 4", "peso": 15.0, "valor": 3600.0, "nodoId": "CAB"},
+  {"id": "P2", "nombre": "Paquete 2", "peso": 25.0, "valor": 7000.0, "nodoId": "PAL"},
+  {"id": "P3", "nombre": "Paquete 3", "peso": 25.0, "valor": 7000.0, "nodoId": "REC"},
+  {"id": "P1", "nombre": "Paquete 1", "peso": 30.0, "valor": 9000.0, "nodoId": "BEL"}
+]
+```
+
+P2 y P3 empatan en 25 kg: P2 queda primero porque ya venía antes en la entrada.
+
+**Errores:** criterio desconocido → 400 `{"estado":"ERROR","detalle":"Criterio invalido: x. Use valor, peso o ratio."}`
+
+**Complejidad:** O(n log n) siempre.
+- **Recurrencia:** T(n) = 2T(n/2) + O(n). Siempre divide por la mitad, sin importar
+  los datos, y mezclar dos listas ordenadas es O(n).
+- **Regla práctica:** a = 2, b = 2, k = 1. Como a = bᵏ, T(n) = O(nᵏ log n) = **O(n log n)**.
+- **Espacio:** O(n) por las listas auxiliares de la mezcla, más O(log n) de la pila
+  de recursión.
+
+**Estructura usada:** listas auxiliares (`ArrayList`) para la mezcla.
 
 ---
 
@@ -338,7 +460,9 @@ El óptimo es **P2 + P3 = 50 kg, $14000**. Greedy pierde $600 porque toma P1
 Greedy es óptimo en la mochila **fraccional** (se pueden partir paquetes),
 no en la 0/1: para el óptimo exacto está `/api/seleccion/dinamica`.
 
-**Errores:** capacidad negativa → 400 `{"estado":"ERROR","detalle":"La capacidad no puede ser negativa: ..."}`
+**Errores:**
+- capacidad negativa → 400 `{"estado":"ERROR","detalle":"La capacidad no puede ser negativa: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 
 **Complejidad:** O(n log n), con n = cantidad de paquetes.
 - Ordenar por ratio con nuestro MergeSort: O(n log n). Recurrencia
@@ -380,6 +504,8 @@ sin que la suma de pesos (kg) supere la capacidad, con cada paquete entero o nad
 
 **Errores:**
 - capacidad negativa → 400 `{"estado":"ERROR","detalle":"La capacidad no puede ser negativa: ..."}`
+- capacidad con decimales (ej. `12.5`) → 400 `{"estado":"ERROR","detalle":"For input string: \"12.5\""}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 - algún paquete con peso no entero → 400 `{"estado":"ERROR","detalle":"El paquete X tiene peso 2.5: la mochila 0/1 con PD requiere pesos enteros no negativos"}`
 
 #### Recurrencia
@@ -487,6 +613,7 @@ Rutas DEP->VUR (costoMaximo=22.0, saltosMaximos=5): 6 rutas. Nodos explorados: 7
 
 **Errores:**
 - id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 - `costoMaximo` o `saltosMaximos` negativos → 400 `{"estado":"ERROR","detalle":"costoMaximo y saltosMaximos no pueden ser negativos"}`
 - alguna arista con costo negativo → 422 `{"estado":"ERROR","detalle":"Backtracking no admite costos negativos: la arista X->Y cuesta ..."}`
 
@@ -545,14 +672,22 @@ paquetes se reparten, sin límite de capacidad.
 
 **Ejemplo:** `GET /api/seleccion/repartir?contenedores=3`
 
-**Respuesta** (200; en `porContenedor` se abrevian los paquetes a su id y peso,
-la respuesta real trae el objeto completo):
+**Respuesta** (200):
 ```json
 {
   "porContenedor": {
-    "Camioneta 1": [{"id": "P1", "peso": 30.0}, {"id": "P5", "peso": 10.0}],
-    "Camioneta 2": [{"id": "P2", "peso": 25.0}, {"id": "P4", "peso": 15.0}],
-    "Camioneta 3": [{"id": "P3", "peso": 25.0}, {"id": "P6", "peso": 5.0}]
+    "Camioneta 1": [
+      {"id": "P1", "nombre": "Paquete 1", "peso": 30.0, "valor": 9000.0, "nodoId": "BEL"},
+      {"id": "P5", "nombre": "Paquete 5", "peso": 10.0, "valor": 2000.0, "nodoId": "FLO"}
+    ],
+    "Camioneta 2": [
+      {"id": "P2", "nombre": "Paquete 2", "peso": 25.0, "valor": 7000.0, "nodoId": "PAL"},
+      {"id": "P4", "nombre": "Paquete 4", "peso": 15.0, "valor": 3600.0, "nodoId": "CAB"}
+    ],
+    "Camioneta 3": [
+      {"id": "P3", "nombre": "Paquete 3", "peso": 25.0, "valor": 7000.0, "nodoId": "REC"},
+      {"id": "P6", "nombre": "Paquete 6", "peso": 5.0, "valor": 800.0, "nodoId": "VUR"}
+    ]
   },
   "cargaMaxima": 40.0,
   "nodosExplorados": 52,
@@ -566,6 +701,7 @@ menos que los 110 kg que hay.
 
 **Errores:**
 - `contenedores` menor a 1 → 400 `{"estado":"ERROR","detalle":"La cantidad de contenedores debe ser al menos 1"}`
+- falta un parámetro obligatorio → 400 (respuesta estándar de Spring, sin `estado` ni `detalle`)
 - algún paquete con peso negativo → 400 `{"estado":"ERROR","detalle":"El paquete X tiene peso negativo: ..."}`
 
 #### La cota y por qué es optimista

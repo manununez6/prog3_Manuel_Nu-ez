@@ -185,7 +185,7 @@ seed/           CargaInicial: la red logistica de CABA
 | BFS | `GET /api/grafo/bfs?origen=DEP` | **implementado** |
 | Dijkstra | `GET /api/grafo/dijkstra?origen=DEP&destino=MIC` | **implementado** |
 | Floyd-Warshall | `GET /api/grafo/floyd` | **implementado** |
-| UCS | `GET /api/grafo/ucs?origen=DEP&destino=VUR` | pendiente |
+| UCS (opcional) | `GET /api/grafo/ucs?origen=DEP&destino=VUR` | pendiente |
 | Prim | `GET /api/grafo/prim?origen=DEP` | **implementado** |
 | Kruskal | `GET /api/grafo/kruskal` | **implementado** |
 | QuickSort | `GET /api/seleccion/quicksort?criterio=ratio` | **implementado** |
@@ -196,6 +196,32 @@ seed/           CargaInicial: la red logistica de CABA
 | Branch & Bound | `GET /api/seleccion/repartir?contenedores=3` | **implementado** |
 
 Los endpoints pendientes responden `501` con `{"estado":"PENDIENTE", ...}`.
+
+## Informe de complejidades
+
+V = vértices, E = aristas, n = paquetes, W = capacidad en kg, k = camionetas,
+b = vecinos por nodo y S = límite de saltos. El espacio es el **adicional** a la
+entrada, sin contar lo que se devuelve. El detalle de cada justificación está en
+`docs/ENDPOINTS.md`.
+
+| Algoritmo | Recurrencia | Temporal | Espacial | Estructura que la sostiene |
+|---|---|---|---|---|
+| DFS | — | O(V + E) | O(V) | Lista de adyacencia, `boolean[] visitado`, pila de recursión |
+| BFS | — | O(V + E) | O(V) | Lista de adyacencia, `boolean[] visitado`, cola FIFO (`ArrayDeque`) |
+| Dijkstra | `dist[v] = min(dist[v], dist[u] + c)` | O((V + E) log V) | O(V + E) | Heap binario (`PriorityQueue`), `dist[]`, `predecesor[]` |
+| Floyd-Warshall | `d[i][j] = min(d[i][j], d[i][k] + d[k][j])` | O(V³) | O(V²) | Matriz de adyacencia |
+| Prim | — | O(E log V) | O(V + E) | Heap binario de aristas candidatas, `boolean[] enMst` |
+| Kruskal | — | O(E log E) = O(E log V) | O(V + E) | Lista de aristas, MergeSort propio, Union-Find (`padre[]`, `rango[]`) |
+| QuickSort | Promedio: T(n) = 2T(n/2) + O(n). Peor: T(n) = T(n−1) + O(n) | O(n log n) promedio, O(n²) peor | O(n), con pila O(log n) promedio y O(n) peor | `ArrayList`, partición de Lomuto, pivote del medio |
+| MergeSort | T(n) = 2T(n/2) + O(n) | O(n log n) | O(n) | Listas auxiliares para la mezcla |
+| Greedy | La de MergeSort | O(n log n) | O(n) | Lista ordenada con MergeSort propio |
+| Mochila 0/1 (PD) | `dp[i][j] = max(dp[i-1][j], dp[i-1][j-w] + v)` | O(n · W), pseudopolinómica | O(n · W) | Matriz `dp[n+1][W+1]` |
+| Backtracking | T(S) = b · T(S−1) + O(b) | O(b^S) con límite de saltos, factorial en el peor caso (grafo completo) | O(V) | Recursión, `boolean[] visitado`, camino actual |
+| Branch & Bound | T(i) = k · T(i+1) + O(k) | O(n · kⁿ) en el peor caso | O(n + k) | Recursión, `double[] carga`, `int[] asignacion` |
+
+Dijkstra y Floyd-Warshall muestran su relación de relajación, porque no son
+recursivos. La poda de Backtracking y Branch & Bound no mejora el peor caso, pero
+reduce mucho los nodos explorados en la práctica.
 
 ## Antes de entregar
 
