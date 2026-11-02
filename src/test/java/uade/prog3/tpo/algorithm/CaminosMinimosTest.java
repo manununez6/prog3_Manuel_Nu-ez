@@ -4,11 +4,12 @@ import org.junit.jupiter.api.Test;
 import uade.prog3.tpo.service.Grafo;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests de Dijkstra sobre la red logistica de CargaInicial.
+ * Tests de Dijkstra y Floyd-Warshall sobre la red logistica de CargaInicial.
  *
  * Los tres primeros casos son justamente aquellos donde el camino mas corto
  * NO es el directo (o no hay directo): si la relajacion estuviera mal,
@@ -99,5 +100,60 @@ class CaminosMinimosTest {
     void idInexistenteFalla() {
         assertThrows(IllegalArgumentException.class,
                 () -> caminosMinimos.dijkstra(redLogistica(), "DEP", "ZZZ"));
+    }
+
+    @Test
+    void floydDepositoAVillaUrquizaIgualQueDijkstra() {
+        Map<String, Double> costos = caminosMinimos.floydWarshall(redLogistica());
+        assertEquals(19.0, costos.get("DEP->VUR"));
+        assertEquals(caminosMinimos.dijkstra(redLogistica(), "DEP", "VUR").costoTotal(), costos.get("DEP->VUR"));
+    }
+
+    @Test
+    void floydCoincideConDijkstraEnTodosLosPares() {
+        Grafo g = redLogistica();
+        Map<String, Double> costos = caminosMinimos.floydWarshall(g);
+
+        assertEquals(100, costos.size(), "10 x 10 pares: la red es conexa");
+        for (String origen : g.ids()) {
+            for (String destino : g.ids()) {
+                assertEquals(caminosMinimos.dijkstra(g, origen, destino).costoTotal(),
+                        costos.get(origen + "->" + destino), origen + "->" + destino);
+            }
+        }
+    }
+
+    @Test
+    void floydAdmiteAristaNegativaSinCicloNegativo() {
+        // A->C->B = 5 - 3 = 2, mejor que A->B = 4. Dijkstra rechaza este grafo.
+        Grafo g = new Grafo(true);
+        g.agregarArista("A", "B", 4);
+        g.agregarArista("A", "C", 5);
+        g.agregarArista("C", "B", -3);
+
+        assertEquals(2.0, caminosMinimos.floydWarshall(g).get("A->B"));
+    }
+
+    @Test
+    void floydCicloNegativoFallaConMensajeClaro() {
+        // A->B->C->A = 1 - 3 + 1 = -1
+        Grafo g = new Grafo(true);
+        g.agregarArista("A", "B", 1);
+        g.agregarArista("B", "C", -3);
+        g.agregarArista("C", "A", 1);
+
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> caminosMinimos.floydWarshall(g));
+        assertTrue(e.getMessage().contains("ciclo de costo negativo"), e.getMessage());
+    }
+
+    @Test
+    void floydOmiteLosParesSinCamino() {
+        Grafo g = new Grafo(true);
+        g.agregarArista("A", "B", 1);
+
+        Map<String, Double> costos = caminosMinimos.floydWarshall(g);
+        assertEquals(1.0, costos.get("A->B"));
+        assertFalse(costos.containsKey("B->A"), "en dirigido no hay camino de vuelta");
     }
 }

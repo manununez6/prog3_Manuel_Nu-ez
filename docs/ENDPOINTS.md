@@ -121,6 +121,71 @@ El camino se reconstruye siguiendo `predecesor` desde el destino hasta el origen
 
 ---
 
+### GET /api/grafo/floyd
+
+Distancia mínima (km) entre **todos** los pares de nodos.
+
+**Parámetros:** ninguno
+
+**Ejemplo:** `GET /api/grafo/floyd`
+
+**Respuesta** (200, un mapa `"origen->destino"`; recortado, son 100 pares):
+```json
+{ "DEP->DEP": 0.0, "DEP->SNT": 3.0, "DEP->MIC": 5.0, "DEP->VUR": 19.0, "PAL->VUR": 9.0, "...": "..." }
+```
+
+Los pares sin camino no aparecen en el mapa. En esta red no pasa porque es conexa.
+
+Matriz completa de km sobre la red. Coincide con Dijkstra en los 100 pares
+(`CaminosMinimosTest`):
+
+| | DEP | SNT | MIC | REC | PAL | BEL | ALM | CAB | FLO | VUR |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **DEP** | 0 | 3 | 5 | 8 | 12 | 17 | 9 | 6 | 10 | 19 |
+| **SNT** | 3 | 0 | 2 | 5 | 9 | 14 | 7 | 9 | 13 | 18 |
+| **MIC** | 5 | 2 | 0 | 3 | 7 | 12 | 5 | 8 | 12 | 16 |
+| **REC** | 8 | 5 | 3 | 0 | 4 | 9 | 4 | 7 | 11 | 13 |
+| **PAL** | 12 | 9 | 7 | 4 | 0 | 5 | 4 | 6 | 10 | 9 |
+| **BEL** | 17 | 14 | 12 | 9 | 5 | 0 | 9 | 11 | 13 | 4 |
+| **ALM** | 9 | 7 | 5 | 4 | 4 | 9 | 0 | 3 | 7 | 13 |
+| **CAB** | 6 | 9 | 8 | 7 | 6 | 11 | 3 | 0 | 4 | 13 |
+| **FLO** | 10 | 13 | 12 | 11 | 10 | 13 | 7 | 4 | 0 | 9 |
+| **VUR** | 19 | 18 | 16 | 13 | 9 | 4 | 13 | 13 | 9 | 0 |
+
+**Errores:** ciclo de costo negativo → 422 `{"estado":"ERROR","detalle":"Floyd-Warshall encontro un ciclo de costo negativo que pasa por X: los costos minimos no estan definidos"}`.
+En un grafo no dirigido, una sola arista negativa ya es un ciclo negativo (ir y volver por ella).
+
+**Complejidad:** O(V³) en tiempo, O(V²) en espacio.
+- **Tiempo:** tres bucles anidados (`k`, `i`, `j`) de V vueltas cada uno, con una
+  comparación y una suma por vuelta: V · V · V · O(1) = O(V³). Armar la matriz
+  cuesta O(V² + E), y revisar la diagonal, O(V): no cambian el total. No depende
+  de E: tarda lo mismo con pocas o muchas aristas.
+- **Espacio:** una sola matriz de V × V que se actualiza en el lugar → O(V²).
+  Alcanza con una porque, en la iteración `k`, `dist[i][k]` y `dist[k][j]` no
+  cambian (salvo que haya un ciclo negativo, que se detecta al final).
+
+**Estructura usada:** matriz de adyacencia (`grafo.matrizDeAdyacencia()`) +
+`LinkedHashMap` para la respuesta.
+
+#### ¿Floyd-Warshall o Dijkstra V veces?
+
+Correr Dijkstra desde cada vértice también da todos los pares:
+
+| | Floyd-Warshall | Dijkstra V veces (con heap) |
+|---|---|---|
+| Tiempo | O(V³) | O(V · (V + E) log V) |
+| Grafo ralo (E ≈ V) | O(V³) | **O(V² log V)**: gana |
+| Grafo denso (E ≈ V²) | **O(V³)**: gana | O(V³ log V) |
+| Costos negativos | **Sí**, si no hay ciclo negativo | No |
+| Espacio | O(V²) | O(V²) para guardar todas las distancias, más O(V + E) de cada corrida |
+| Implementación | Tres bucles | Necesita heap y lista de adyacencia |
+
+Esta red es rala (V = 10, E = 16), así que asintóticamente conviene Dijkstra V
+veces. Con solo 10 nodos la diferencia no se nota y Floyd es más simple. Si solo
+hace falta una consulta origen-destino, lo que corresponde es un solo Dijkstra.
+
+---
+
 ### GET /api/grafo/prim
 
 Árbol de recubrimiento mínimo: el conjunto de rutas de menor km total que
@@ -197,9 +262,9 @@ rutas de menor a mayor y las va agregando si no forman ciclo.
 }
 ```
 
-Mismas 9 aristas y **32 km** que Prim, en otro orden. Descarta PAL-ALM (4)
-porque PAL y ALM ya estaban conectados por REC, y nunca llega a mirar las
-rutas de 5 km o más que no entran (corta al llegar a 9 aristas).
+Mismas 9 aristas y **32 km** que Prim, en otro orden. Descarta PAL-ALM (4) y
+MIC-ALM (5) porque sus extremos ya estaban conectados. Con PAL-BEL (5) llega a
+9 aristas y corta: las rutas de 6, 9 y 10 km ni se miran.
 
 **Errores:**
 - grafo no conexo → 422 `{"estado":"ERROR","detalle":"El grafo no es conexo: el arbol solo llego a X de las Y aristas necesarias"}`

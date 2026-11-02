@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -122,9 +123,46 @@ public class CaminosMinimos {
      * Complejidad esperada: O(V^3) en tiempo, O(V^2) en espacio.
      *
      * Devuelve un mapa "origen->destino" con el costo minimo de cada par.
+     * Los pares sin camino no aparecen en el mapa.
+     *
+     * Invariante: al terminar la iteracion k, dist[i][j] es el costo minimo
+     * de i a j usando como intermedios solo los vertices 0..k. Por eso k va
+     * afuera: dist[i][k] y dist[k][j] ya tienen que estar resueltos para
+     * los intermedios anteriores.
      */
     public Map<String, Double> floydWarshall(Grafo grafo) {
-        throw new PendienteDeImplementar("Floyd-Warshall");
+        int n = grafo.cantidadVertices();
+        double[][] dist = grafo.matrizDeAdyacencia();
+
+        for (int k = 0; k < n; k++) {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    // ¿ir de i a j pasando por k es mas barato que lo que tenia?
+                    if (dist[i][k] + dist[k][j] < dist[i][j]) {
+                        dist[i][j] = dist[i][k] + dist[k][j];
+                    }
+                }
+            }
+        }
+
+        // la diagonal arranca en 0: si quedo negativa, salir de i y volver a i
+        // resta costo, o sea que i esta en un ciclo negativo
+        for (int i = 0; i < n; i++) {
+            if (dist[i][i] < 0) {
+                throw new IllegalStateException("Floyd-Warshall encontro un ciclo de costo negativo que pasa por "
+                        + grafo.idDe(i) + ": los costos minimos no estan definidos");
+            }
+        }
+
+        Map<String, Double> costos = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (dist[i][j] != Grafo.INFINITO) {
+                    costos.put(grafo.idDe(i) + "->" + grafo.idDe(j), dist[i][j]);
+                }
+            }
+        }
+        return costos;
     }
 
     /**
