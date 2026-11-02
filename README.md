@@ -192,7 +192,7 @@ seed/           CargaInicial: la red logistica de CABA
 | MergeSort | `GET /api/seleccion/mergesort?criterio=peso` | **implementado** |
 | Greedy | `GET /api/seleccion/greedy?capacidad=50` | **implementado** |
 | Mochila 0/1 (PD) | `GET /api/seleccion/dinamica?capacidad=50` | **implementado** |
-| Backtracking | `GET /api/grafo/rutas?origen=DEP&destino=VUR&costoMaximo=30` | pendiente |
+| Backtracking | `GET /api/grafo/rutas?origen=DEP&destino=VUR&costoMaximo=30` | **implementado** |
 | Branch & Bound | `GET /api/seleccion/repartir?contenedores=3` | pendiente |
 
 Los endpoints pendientes responden `501` con `{"estado":"PENDIENTE", ...}`.

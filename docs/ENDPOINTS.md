@@ -456,7 +456,80 @@ para devolver los elegidos en el orden de entrada.
 
 ### GET /api/grafo/rutas
 
-_(completar — incluir cantidad de nodos explorados con y sin poda)_
+Enumera **todas** las rutas simples (sin repetir puntos) entre dos nodos que no
+superen un máximo de km ni de saltos. Usa backtracking.
+
+**Parámetros:**
+- `origen`, `destino` (ids)
+- `costoMaximo` (km, opcional, por defecto 1000)
+- `saltosMaximos` (cantidad de rutas recorridas, opcional, por defecto 10)
+
+**Ejemplo:** `GET /api/grafo/rutas?origen=DEP&destino=VUR&costoMaximo=22&saltosMaximos=5`
+
+**Respuesta** (200, 6 rutas; el orden depende de la lista de adyacencia):
+```json
+[
+  {"vertices": ["DEP","SNT","MIC","REC","PAL","VUR"], "costoTotal": 22.0},
+  {"vertices": ["DEP","MIC","REC","PAL","BEL","VUR"], "costoTotal": 22.0},
+  {"vertices": ["DEP","CAB","ALM","PAL","BEL","VUR"], "costoTotal": 22.0},
+  {"vertices": ["DEP","CAB","PAL","BEL","VUR"], "costoTotal": 21.0},
+  {"vertices": ["DEP","CAB","PAL","VUR"], "costoTotal": 22.0},
+  {"vertices": ["DEP","CAB","FLO","VUR"], "costoTotal": 19.0}
+]
+```
+
+Si ninguna ruta cumple los límites, la respuesta es `[]`.
+
+**Log:** la comparación de nodos explorados queda en el log de la aplicación:
+```
+Rutas DEP->VUR (costoMaximo=22.0, saltosMaximos=5): 6 rutas. Nodos explorados: 77 con poda, 154 sin poda
+```
+
+**Errores:**
+- id inexistente → 400 `{"estado":"ERROR","detalle":"No existe el nodo con id: ..."}`
+- `costoMaximo` o `saltosMaximos` negativos → 400 `{"estado":"ERROR","detalle":"costoMaximo y saltosMaximos no pueden ser negativos"}`
+- alguna arista con costo negativo → 422 `{"estado":"ERROR","detalle":"Backtracking no admite costos negativos: la arista X->Y cuesta ..."}`
+
+#### Comparación con y sin poda
+
+Cada nodo explorado es una llamada recursiva, o sea un camino parcial. Medido
+sobre la red de CABA, de DEP a VUR (`BacktrackingTest`):
+
+| costoMaximo | saltosMaximos | Rutas | Nodos con poda | Nodos sin poda | Ahorro |
+|---|---|---|---|---|---|
+| 18 | 5 | 0 | 49 | 154 | 68 % |
+| 19 | 5 | 1 | 56 | 154 | 64 % |
+| 22 | 5 | 6 | 77 | 154 | 50 % |
+| 30 | 6 | 27 | 130 | 154 | 16 % |
+| 1000 | 3 | 2 | 26 | 154 | 83 % |
+| 1000 | 10 | 47 | 154 | 154 | 0 % |
+
+- Con y sin poda encuentran **las mismas rutas**. La poda solo evita explorar
+  ramas que no pueden terminar en una ruta válida.
+- Cuanto más ajustados son los límites, más ayuda.
+- Con límites que no restringen nada (última fila) la poda no ahorra nada: por
+  eso **no cambia el peor caso**.
+- Con 19 km sobrevive una sola ruta, la de Dijkstra (DEP→CAB→FLO→VUR). Con 18 km
+  no hay ninguna.
+
+La poda por costo es correcta porque las distancias son ≥ 0: un camino parcial
+que ya se pasó del máximo no puede volver a bajar. Por eso se rechazan los
+costos negativos.
+
+**Complejidad:** exponencial en el peor caso.
+- **Cuántos caminos hay:** en un grafo completo, de origen a destino se puede
+  pasar por cualquier subconjunto de los otros V − 2 vértices, en cualquier
+  orden. Son Σ (V−2)! / (V−2−k)! ≈ e · (V−2)! caminos simples, que crece de
+  forma factorial. Con V = 10 ya son 109.601.
+- **Costo total:** hay que listarlos todos y copiar cada ruta cuesta O(V): **O(V · V!)**
+  como cota. Ningún algoritmo puede evitarlo si esas rutas son la salida pedida.
+- **Con límite de saltos S:** el árbol tiene profundidad S y se abre en b ramas
+  por nodo (b = cantidad de vecinos): **O(b^S)**. En esta red b ronda 2E/V = 3,2.
+- **Espacio:** O(V) para `visitado`, el camino y la pila de recursión, más lo
+  que ocupen las rutas devueltas.
+
+**Estructura usada:** recursión + `boolean[] visitado` + lista del camino actual
+(se marca y agrega al avanzar, se desmarca y quita al volver).
 
 ---
 
