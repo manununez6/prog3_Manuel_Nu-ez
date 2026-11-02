@@ -535,4 +535,94 @@ costos negativos.
 
 ### GET /api/seleccion/repartir
 
-_(completar — incluir cuál es la cota y por qué es optimista)_
+Reparte los paquetes entre `k` camionetas iguales minimizando los kg de la más
+cargada (problema de *makespan*). Usa Branch & Bound.
+
+**Función objetivo:** minimizar la carga máxima entre las camionetas. Todos los
+paquetes se reparten, sin límite de capacidad.
+
+**Parámetros:** `contenedores` (cantidad de camionetas, `k` ≥ 1)
+
+**Ejemplo:** `GET /api/seleccion/repartir?contenedores=3`
+
+**Respuesta** (200; en `porContenedor` se abrevian los paquetes a su id y peso,
+la respuesta real trae el objeto completo):
+```json
+{
+  "porContenedor": {
+    "Camioneta 1": [{"id": "P1", "peso": 30.0}, {"id": "P5", "peso": 10.0}],
+    "Camioneta 2": [{"id": "P2", "peso": 25.0}, {"id": "P4", "peso": 15.0}],
+    "Camioneta 3": [{"id": "P3", "peso": 25.0}, {"id": "P6", "peso": 5.0}]
+  },
+  "cargaMaxima": 40.0,
+  "nodosExplorados": 52,
+  "nodosPodados": 60
+}
+```
+
+Con `k = 3` las cargas quedan en 40, 40 y 30 kg. No se puede bajar de 40: los
+pesos son múltiplos de 5, y con un máximo de 35 entrarían solo 3 × 35 = 105 kg,
+menos que los 110 kg que hay.
+
+**Errores:**
+- `contenedores` menor a 1 → 400 `{"estado":"ERROR","detalle":"La cantidad de contenedores debe ser al menos 1"}`
+- algún paquete con peso negativo → 400 `{"estado":"ERROR","detalle":"El paquete X tiene peso negativo: ..."}`
+
+#### La cota y por qué es optimista
+
+En cada nodo, con algunos paquetes ya ubicados:
+
+```
+cota = max( carga máxima actual , suma de todos los pesos / k )
+```
+
+Es una **cota inferior**: ninguna solución de esa rama puede terminar por debajo
+de ese valor. Es **optimista** porque nunca promete algo peor que lo que la rama
+puede lograr, y cada término lo garantiza por separado:
+
+- **Carga máxima actual:** agregar paquetes nunca baja una carga. La camioneta
+  más cargada hoy termina con esa carga o más.
+- **Suma de pesos / k:** al final todos los paquetes están repartidos, y el
+  promedio de las `k` cargas es exactamente ese valor. El máximo de varios
+  números nunca es menor que su promedio.
+
+Como cada término es un piso del resultado, el mayor de los dos también lo es.
+Puede quedar por debajo del valor real: con `k = 3` la raíz da 110/3 = 36,67 y el
+óptimo es 40. Esa diferencia es válida y solo significa que se poda algo menos.
+
+**Podar:** si `cota >= mejor encontrado`, ninguna solución de la rama puede ser
+estrictamente mejor, así que abandonarla no pierde el óptimo. Si la cota fuera
+pesimista (mayor que el mejor valor real de la rama) podría descartar la rama
+que contiene el óptimo y el resultado sería peor, **sin ningún error visible**.
+
+`RamificacionYPodaTest` compara el resultado contra fuerza bruta para varios
+juegos de datos y valores de `k`.
+
+#### Nodos explorados y podados
+
+Con los paquetes en el orden de `CargaInicial`. Los conteos cambian si cambia el
+orden (el óptimo no):
+
+| k | Carga máxima | Explorados | Podados | Árbol sin poda | Ahorro |
+|---|---|---|---|---|---|
+| 1 | 110 | 7 | 0 | 7 | 0 % |
+| 2 | 55 | 28 | 5 | 127 | 78 % |
+| 3 | 40 | 52 | 60 | 1.093 | 95 % |
+| 4 | 30 | 45 | 68 | 5.461 | 99 % |
+
+Un nodo podado no se cuenta como explorado, y todo lo que colgaba de él ni se
+genera. Por eso explorados + podados da mucho menos que el árbol completo.
+
+**Complejidad:** exponencial, O(n · kⁿ) en el peor caso, con n paquetes.
+- **Árbol:** cada paquete puede ir a cualquiera de las `k` camionetas. Hay kⁿ
+  hojas y 1 + k + … + kⁿ = O(kⁿ) nodos para k ≥ 2.
+- **Por nodo:** calcular la cota de cada hijo es O(1), porque la suma de pesos
+  se calcula una vez y la carga máxima se actualiza al avanzar.
+- **Por solución mejor:** copiar la asignación cuesta O(n). De ahí el factor n.
+- **Espacio:** O(n + k) para la recursión, las cargas y la asignación.
+
+La poda no cambia el peor caso, pero en la práctica recorta muchísimo, como
+muestra la tabla.
+
+**Estructura usada:** recursión + `double[] carga` + `int[] asignacion` (con
+copia de la mejor).
