@@ -235,5 +235,5 @@ Ver `GUIA-TPO.md` para el paso a paso.
 
 ## Uso de IA
 
-> **TODO:** completar al final del trabajo: qué herramientas de IA se usaron,
-> para qué partes y cómo se verificó lo que generaron.
+Elegí el dominio, armé el grafo y los paquetes, y definí el orden de trabajo por hitos.
+Usé Claude como apoyo para configurar el entorno (Docker, WSL, Neo4j) y organizar el plan, y Claude Code como apoyo para generar una primera versión de los algoritmos y sus tests. Completé y revisé cada parte antes de commitearla, verifiqué los resultados de cada endpoint contra valores esperados calculados sobre el grafo (por ejemplo, Dijkstra DEP→VUR = 19 km y la mochila con 50 kg = $14.000).
