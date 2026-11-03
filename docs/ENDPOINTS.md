@@ -762,3 +762,81 @@ muestra la tabla.
 
 **Estructura usada:** recursión + `double[] carga` + `int[] asignacion` (con
 copia de la mejor).
+
+---
+
+## Verificación a mano (Hito 5)
+
+Cálculos paso a paso sobre la red de CargaInicial, comparados con lo que devuelven los endpoints.
+
+### Dijkstra de DEP a VUR
+
+En cada paso se cierra el nodo no cerrado con menor distancia y se relajan sus vecinos.
+Entre paréntesis, el predecesor. ✓ = nodo cerrado.
+
+| Paso | Cierro | DEP | SNT | MIC | REC | PAL | BEL | ALM | CAB | FLO | VUR |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 0 | — | 0 | ∞ | ∞ | ∞ | ∞ | ∞ | ∞ | ∞ | ∞ | ∞ |
+| 1 | DEP | 0 ✓ | 3 (DEP) | 6 (DEP) | ∞ | ∞ | ∞ | ∞ | 6 (DEP) | ∞ | ∞ |
+| 2 | SNT | ✓ | 3 ✓ | **5 (SNT)** | ∞ | ∞ | ∞ | ∞ | 6 | ∞ | ∞ |
+| 3 | MIC | ✓ | ✓ | 5 ✓ | 8 (MIC) | ∞ | ∞ | 10 (MIC) | 6 | ∞ | ∞ |
+| 4 | CAB | ✓ | ✓ | ✓ | 8 | 12 (CAB) | ∞ | **9 (CAB)** | 6 ✓ | 10 (CAB) | ∞ |
+| 5 | REC | ✓ | ✓ | ✓ | 8 ✓ | 12 | ∞ | 9 | ✓ | 10 | ∞ |
+| 6 | ALM | ✓ | ✓ | ✓ | ✓ | 12 | ∞ | 9 ✓ | ✓ | 10 | ∞ |
+| 7 | FLO | ✓ | ✓ | ✓ | ✓ | 12 | ∞ | ✓ | ✓ | 10 ✓ | 19 (FLO) |
+| 8 | PAL | ✓ | ✓ | ✓ | ✓ | 12 ✓ | 17 (PAL) | ✓ | ✓ | ✓ | 19 |
+| 9 | BEL | ✓ | ✓ | ✓ | ✓ | ✓ | 17 ✓ | ✓ | ✓ | ✓ | 19 |
+| 10 | VUR | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 19 ✓ |
+
+- Paso 2: MIC baja de 6 a 5 porque DEP→SNT→MIC (3 + 2) es más corto que la ruta directa (6).
+- Paso 4: ALM baja de 10 a 9 por DEP→CAB→ALM (6 + 3).
+- Rutas revisadas que no mejoran (se compara con <, así que un empate no cambia nada):
+  paso 5, REC→PAL (8 + 4 = 12, igual a 12) y REC→ALM (8 + 4 = 12, peor que 9);
+  paso 6, ALM→PAL (9 + 4 = 13, peor que 12); paso 8, PAL→VUR (12 + 10 = 22, peor que 19),
+  aunque en ese paso PAL→BEL sí actualiza BEL de ∞ a 17; paso 9, BEL→VUR (17 + 4 = 21,
+  peor que 19).
+
+Camino reconstruido desde los predecesores: VUR ← FLO ← CAB ← DEP → **DEP, CAB, FLO, VUR = 19 km**.
+`GET /api/grafo/dijkstra?origen=DEP&destino=VUR` devuelve el mismo camino y costo 19. ✅
+
+### Kruskal
+
+Rutas ordenadas por km. Se agrega una ruta solo si une dos grupos distintos (find(u) != find(v)).
+
+| # | Ruta | km | ¿Mismo grupo? | ¿Se agrega? | Total |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | SNT-MIC | 2 | No | Sí | 2 |
+| 2 | DEP-SNT | 3 | No | Sí | 5 |
+| 3 | MIC-REC | 3 | No | Sí | 8 |
+| 4 | ALM-CAB | 3 | No | Sí | 11 |
+| 5 | REC-PAL | 4 | No | Sí | 15 |
+| 6 | REC-ALM | 4 | No (une {DEP,SNT,MIC,REC,PAL} con {ALM,CAB}) | Sí | 19 |
+| 7 | PAL-ALM | 4 | Sí | No, formaría ciclo | 19 |
+| 8 | BEL-VUR | 4 | No | Sí | 23 |
+| 9 | CAB-FLO | 4 | No | Sí | 27 |
+| 10 | MIC-ALM | 5 | Sí | No, formaría ciclo | 27 |
+| 11 | PAL-BEL | 5 | No (une el grupo grande con {BEL,VUR}) | Sí | **32** |
+
+Con 9 rutas (V − 1) se termina; no hace falta mirar DEP-MIC, DEP-CAB, CAB-PAL (6), FLO-VUR (9) ni PAL-VUR (10).
+`GET /api/grafo/kruskal` devuelve 9 aristas y costo total 32. ✅
+
+### Prim desde DEP
+
+En cada paso se elige la ruta más corta que sale del árbol hacia un nodo que todavía no está.
+
+| Paso | Ruta elegida | km | Nodo nuevo | Total |
+|:---:|:---:|:---:|:---:|:---:|
+| 1 | DEP-SNT | 3 | SNT | 3 |
+| 2 | SNT-MIC | 2 | MIC | 5 |
+| 3 | MIC-REC | 3 | REC | 8 |
+| 4 | REC-PAL | 4 | PAL | 12 |
+| 5 | REC-ALM | 4 | ALM | 16 |
+| 6 | ALM-CAB | 3 | CAB | 19 |
+| 7 | CAB-FLO | 4 | FLO | 23 |
+| 8 | PAL-BEL | 5 | BEL | 28 |
+| 9 | BEL-VUR | 4 | VUR | **32** |
+
+En el paso 4 hay empate entre REC-PAL y REC-ALM (4 km), y en el paso 5 entre REC-ALM y
+PAL-ALM (4 km). Según cómo se desempate, el árbol puede tener otras aristas, pero el
+costo total siempre es 32: todo árbol de recubrimiento mínimo tiene el mismo costo.
+En estas dos tablas, Prim y Kruskal eligen las mismas 9 rutas (32 km). `GET /api/grafo/prim?origen=DEP` devuelve 9 aristas y costo total 32. ✅
