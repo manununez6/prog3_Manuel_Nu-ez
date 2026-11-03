@@ -222,8 +222,20 @@ Correr Dijkstra desde cada vértice también da todos los pares:
 | Espacio | O(V²) | O(V²) para guardar todas las distancias, más O(V + E) de cada corrida |
 | Implementación | Tres bucles | Necesita heap y lista de adyacencia |
 
+**Sobre esta red (V = 10, E = 16):** el triple bucle de Floyd hace **1.000
+comparaciones** (V³ = 10³). Correr Dijkstra desde los 10 vértices expande **100
+nodos** (10 por corrida) y revisa **320 aristas** (32 por corrida, porque cada una
+de las 16 rutas se ve desde sus dos extremos). Además, la cola de prioridad saca
+112 entradas: esos 100 nodos expandidos más **12 entradas repetidas** que se
+descartan. Son conteos reales sobre el grafo de `CargaInicial`, sin contar la
+validación de costos negativos que hace Dijkstra antes de empezar. Si cambia el orden de carga, las repetidas
+pueden ser hasta 14 (lo probé con 5.000 órdenes al azar); los otros números no
+cambian. Las operaciones de Floyd son O(1), mientras que cada entrada de la cola
+cuesta además O(log E) al encolarla y al sacarla.
+
 Esta red es rala (V = 10, E = 16), así que asintóticamente conviene Dijkstra V
-veces. Con solo 10 nodos la diferencia no se nota y Floyd es más simple. Si solo
+veces. Con solo 10 nodos, esa diferencia de operaciones no llega a notarse en el
+tiempo de respuesta y Floyd es más simple. Si solo
 hace falta una consulta origen-destino, lo que corresponde es un solo Dijkstra.
 
 ---

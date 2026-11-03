@@ -225,11 +225,11 @@ reduce mucho los nodos explorados en la práctica.
 
 ## Antes de entregar
 
-- [ ] `./mvnw test` pasa
-- [ ] no hay ninguna contraseña en el código ni en `application.properties`
-- [ ] cada algoritmo implementado tiene al menos un test
-- [ ] `docs/ENDPOINTS.md` documenta entrada y salida de cada endpoint
-- [ ] el README explica **qué dominio eligieron y qué representa el costo**
+- [x] `./mvnw test` pasa
+- [x] no hay ninguna contraseña en el código ni en `application.properties`
+- [x] cada algoritmo implementado tiene al menos un test
+- [x] `docs/ENDPOINTS.md` documenta entrada y salida de cada endpoint
+- [x] el README explica **qué dominio eligieron y qué representa el costo**
 
 Ver `GUIA-TPO.md` para el paso a paso.
 
